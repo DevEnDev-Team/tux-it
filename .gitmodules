@@ -1,0 +1,9 @@
+[submodule "tux-client"]
+	path = tux-client
+	url = git@github.com:DevEnDev-Team/tux-client.git
+[submodule "tux-server"]
+	path = tux-server
+	url = git@github.com:DevEnDev-Team/tux-server.git
+[submodule "tux-mobile"]
+	path = tux-mobile
+	url = git@github.com:DevEnDev-Team/tux-mobile.git

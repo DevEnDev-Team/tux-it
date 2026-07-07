@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  post-it-server:
+    image: ghcr.io/devendev-team/post-it-server:latest
+    build:
+      context: ./tux-server
+    container_name: post-it-sync-server
+    ports:
+      - "8282:8282"
+    environment:
+      # Mot de passe d'accès au panneau d'administration (/admin)
+      - ADMIN_PASSWORD=mon_mot_de_passe_admin_1234
+    volumes:
+      # Persister le dossier de données contenant la base SQLite
+      - ./tux-server/data:/app/data
+    restart: unless-stopped

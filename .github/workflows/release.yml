@@ -1,0 +1,147 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 1. Extraction de la version à partir du CMakeLists.txt
+      - name: Extract project version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP 'project\([^)]*VERSION \K[0-9.]+' tux-client/CMakeLists.txt)
+          TAG_NAME="v$VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "tag=$TAG_NAME" >> $GITHUB_ENV
+          echo "Version extraite : $VERSION (Tag : $TAG_NAME)"
+
+      # 2. Installation de Go et compilation du serveur
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25'
+
+      - name: Build Go Server
+        run: |
+          cd tux-server
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o post-it-server main.go
+          zip -j ../post-it-server-linux.zip post-it-server docker-compose.yml Dockerfile
+          cd ..
+
+      # 2.5. Publication de l'image Docker sur GitHub Container Registry (GHCR)
+      - name: Log in to GitHub Container Registry
+         uses: docker/login-action@v3
+         with:
+           registry: ghcr.io
+           username: ${{ github.actor }}
+           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set Docker Image Name
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/post-it-server"
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./tux-server
+          file: ./tux-server/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ env.version }}
+
+      # 3. Installation des dépendances Qt6 et compilation du client Desktop
+      - name: Install Qt6 and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake qt6-base-dev qt6-base-private-dev libgl1-mesa-dev libx11-xcb-dev libxcb-keysyms1-dev libxcb-util-dev zip
+
+      - name: Build Qt6 Client
+        run: |
+          cd tux-client
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make
+          cd ..
+          # Package le client avec les scripts d'installation/désinstallation
+          zip -j ../post-it-client-linux.zip build/post-it install.sh uninstall.sh
+          cd ..
+
+      # 4. Création automatique du tag Git s'il n'existe pas encore (sur push main)
+      - name: Push Git Tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Vérifie si le tag existe déjà sur le repo distant
+          if git rev-parse "${{ env.tag }}" >/dev/null 2>&1; then
+            echo "Le tag ${{ env.tag }} existe déjà. Utilisation d'un tag de build automatique."
+            UNIQUE_TAG="${{ env.tag }}-build-${{ github.run_number }}"
+            echo "tag=$UNIQUE_TAG" >> $GITHUB_ENV
+            git tag $UNIQUE_TAG
+            git push origin $UNIQUE_TAG
+          else
+            echo "Création du tag ${{ env.tag }}"
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git tag ${{ env.tag }}
+            git push origin ${{ env.tag }}
+          fi
+
+      # 5. Publication de la Release avec les binaires précompilés
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.tag }}
+          name: "Post-It - Version ${{ env.version }} 🦊"
+          body: |
+            ## 🦊 Post-It Release - Version ${{ env.version }}
+            
+            Voici les binaires précompilés pour la version **${{ env.version }}** de Post-It.
+            
+            ### 📦 Fichiers inclus :
+            * **`post-it-client-linux.zip`** : Contient l'application de notes adhésives (Post-It) pour Linux, ainsi que le script d'installation `install.sh` et de désinstallation `uninstall.sh`.
+            * **`post-it-server-linux.zip`** : Contient le serveur de synchronisation Go compilé statiquement, avec son `docker-compose.yml` et `Dockerfile` pour un déploiement instantané.
+            
+            ---
+            
+            ### 🚀 Instructions d'installation rapide (Client) :
+            1. Téléchargez et extrayez le fichier `post-it-client-linux.zip`.
+            2. Lancez l'installation :
+               ```bash
+               chmod +x install.sh
+               ./install.sh
+               ```
+            3. Lancez l'application avec la commande : `post-it`
+            
+            ### ☁️ Déploiement rapide (Serveur de synchronisation) :
+            1. Téléchargez et extrayez le fichier `post-it-server-linux.zip`.
+            2. Lancez le serveur avec Docker :
+               ```bash
+               docker compose up --build -d
+               ```
+            3. Accédez à la console d'administration sur `http://localhost:8282/admin`.
+          draft: false
+          prerelease: false
+          files: |
+            post-it-client-linux.zip
+            post-it-server-linux.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
