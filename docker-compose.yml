@@ -14,4 +14,6 @@ services:
     volumes:
       # Persister le dossier de données contenant la base SQLite
       - ./tux-server/data:/app/data
+      # Monter le code de la PWA mobile pour qu'il soit servi à la racine par le serveur
+      - ./tux-mobile:/app/tux-mobile
     restart: unless-stopped
