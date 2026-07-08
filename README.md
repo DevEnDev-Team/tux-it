@@ -29,13 +29,11 @@ Le projet est composé de trois modules principaux :
 
 ## 💻 Installation & Compilation du Client Desktop (PC)
 
-Pour utiliser le client de bureau Tux-It en local, vous devez cloner le dépôt de manière récursive afin de récupérer l'ensemble des modules :
+Pour utiliser le client de bureau Tux-It en local, vous avez simplement besoin de cloner le dépôt autonome du client :
 
 ```bash
-git clone --recursive https://github.com/DevEnDev-Team/tux-it.git
+git clone https://github.com/DevEnDev-Team/tux-client.git
 ```
-
-*(Si le dépôt a déjà été récupéré sans ses sous-modules, initialisez-les avec `git submodule update --init --recursive`)*.
 
 ### Installation automatique via le script d'installation
 Le projet fournit un script d'installation (`install.sh`) qui compile l'application en mode Release et l'installe sur votre système Linux.
@@ -45,7 +43,7 @@ Le projet fournit un script d'installation (`install.sh`) qui compile l'applicat
    sudo apt update
    sudo apt install build-essential cmake qt6-base-dev qt6-base-private-dev
    ```
-2. **Accédez au dossier du client** :
+2. **Accédez au dossier cloné** :
    ```bash
    cd tux-client
    ```
