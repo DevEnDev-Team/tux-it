@@ -1,6 +1,6 @@
 # 🐧 Tux-It : Système de Notes Synchronisées & Auto-Hébergé
 
-Tux-It est une suite logicielle moderne, performante et axée sur la confidentialité, conçue pour vous permettre de créer, gérer et synchroniser vos notes personnelles de façon totalement autonome. Inspiré de l'écosystème Linux et de son célèbre pingouin, Tux-It vous donne le contrôle total sur vos données à travers une architecture client-serveur légère et auto-hébergeable.
+Tux-It est une suite logicielle moderne, performante et axée sur la confidentialité, conçue pour vous permettre de créer, gérer et synchroniser vos notes de façon autonome. Inspiré de l'écosystème Linux et de son célèbre pingouin, Tux-It vous donne le contrôle total sur vos données à travers une architecture multi-composants légère et auto-hébergeable.
 
 ---
 
@@ -16,54 +16,34 @@ Tux-It est une suite logicielle moderne, performante et axée sur la confidentia
 
 ## 🛠️ Architecture & Composants
 
-Le projet est structuré en plusieurs dépôts indépendants :
+Le projet est structuré en plusieurs dépôts indépendants sous forme de sous-modules Git :
 
-1. **[tux-client](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-client)** : L'application de bureau C++ / Qt6. Elle gère l'affichage des notes sous forme de fenêtres collantes (sticky notes) personnalisables. Elle intègre un script d'installation automatique (`install.sh`).
-2. **[tux-server](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-server)** : Le serveur de synchronisation Go. Il stocke les notes dans une base SQLite (`postit.db`) et intègre une console d'administration sécurisée.
-3. **[tux-mobile](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-mobile)** : L'application PWA mobile (HTML5/JavaScript) utilisant un Service Worker pour le support hors-ligne.
+### 1. 💻 Client Desktop (`tux-client`)
+* L'application de bureau native écrite en **C++ / Qt6**.
+* Elle affiche et gère vos notes sous forme de fenêtres collantes (sticky notes) sur votre écran.
+* **Documentation & Installation** : voir le [README de tux-client](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-client/README.md).
+
+### 2. ☁️ Serveur de Synchronisation (`tux-server`)
+* Le backend robuste écrit en **Go** avec persistance **SQLite**.
+* Il propose une console d'administration sécurisée accessible par navigateur pour gérer les clés d'API.
+* **Documentation & Déploiement** : voir le [README de tux-server](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-server/README.md).
+
+### 3. 📱 Application Mobile PWA (`tux-mobile`)
+* L'interface web et mobile progressive (HTML5 / JavaScript) qui s'installe directement sur l'écran d'accueil de votre téléphone.
+* Elle est servie automatiquement à la racine de votre instance de serveur de synchronisation.
+* **Documentation** : voir le [README de tux-mobile](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-mobile/README.md).
 
 ---
 
-## ☁️ Déploiement en Production (Docker)
+## 💻 Clonage en Mode Développement Local (Complet)
 
-Le serveur Go et l'application mobile PWA sont encapsulés ensemble au sein de la même **image Docker officielle** de production (`ghcr.io/devendev-team/tux-server:latest`). L'application PWA est intégrée à l'image et est servie automatiquement à la racine (`/`).
+Si vous souhaitez contribuer au projet global ou travailler localement sur l'ensemble de l'écosystème, vous devez cloner le dépôt de manière récursive afin de récupérer tous les sous-modules :
 
-En production, vous n'avez pas besoin de cloner l'intégralité du projet de développement. Il vous suffit de démarrer le conteneur avec la configuration suivante :
-
-### Fichier `docker-compose.yml` de production
-
-```yaml
-version: '3.8'
-
-services:
-  tux-sync-server:
-    image: ghcr.io/devendev-team/tux-server:latest
-    container_name: tux-sync-server
-    restart: always
-    ports:
-      - "8282:8282"
-    environment:
-      - ADMIN_PASSWORD=votre_mot_de_passe_securise
-      - PORT=8282
-    volumes:
-      - ./data:/app/data               # Persistance de la base de données (postit.db)
-```
-
-Pour lancer le serveur en arrière-plan :
 ```bash
-docker compose up -d
+git clone --recursive https://github.com/DevEnDev-Team/tux-it.git
 ```
-*Le serveur et la PWA mobile seront immédiatement opérationnels sur le port `8282`.*
 
----
-
-## 💻 Compilation & Développement Local
-
-Pour compiler le client desktop localement ou contribuer au projet, référez-vous directement aux documentations dédiées de chaque sous-module :
-
-* Pour compiler et installer l'application de bureau : voir le [README de tux-client](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-client/README.md).
-* Pour lancer et développer sur le serveur de synchronisation : voir le [README de tux-server](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-server/README.md).
-* Pour l'application mobile : voir le [README de tux-mobile](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-mobile/README.md).
+*(Si le dépôt a déjà été récupéré sans ses sous-modules, initialisez-les avec `git submodule update --init --recursive`)*.
 
 ---
 
