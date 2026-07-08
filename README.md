@@ -4,7 +4,7 @@ Tux-It est une suite logicielle moderne, performante et axée sur la confidentia
 
 Le projet est composé de trois modules principaux :
 1. **Un Client Desktop léger** écrit en **C++ (Qt6)** pour une intégration native et rapide sur votre bureau.
-2. **Un Serveur de synchronisation** robuste écrit en **Go (SQLite)**.
+2. **Un Serveur de synchronisation** robuste écrit en **Go (SQLite)** et encapsulé dans une **image Docker officielle**.
 3. **Une Application Web Mobile & PWA** en **HTML5/JavaScript** pour consulter et éditer vos notes en déplacement, même hors-ligne.
 
 ---
@@ -22,30 +22,66 @@ Le projet est composé de trois modules principaux :
 ## 🛠️ Architecture & Composants
 
 * **`tux-client/`** : L'application de bureau C++ / Qt6. Elle gère l'affichage des notes sous forme de fenêtres collantes (sticky notes) personnalisables. C'est elle qui régit les fenêtres ouvertes à l'écran. Fermer une note collante (via sa croix "X") l'archive simplement, tandis que la suppression définitive s'effectue depuis son tableau de bord.
-* **`tux-server/`** : L'API de synchronisation en Go. Il stocke de façon sécurisée le flux de notes sous format JSON au sein d'une base SQLite légère et performante (`postit.db`). Il intègre également une console d'administration sécurisée accessible par navigateur.
+* **`tux-server/`** : Le serveur de synchronisation en Go. Il stocke de façon sécurisée le flux de notes sous format JSON au sein d'une base SQLite légère et performante (`postit.db`). Il intègre également une console d'administration sécurisée accessible par navigateur.
 * **`tux-mobile/`** : L'application PWA mobile. Grâce à un Service Worker avancé et à la persistance locale (`localStorage`), elle permet de gérer vos notes hors-ligne et de synchroniser automatiquement vos modifications dès le retour de la connexion, sans intercepter les requêtes d'API d'écriture.
 
 ---
 
-## ☁️ Déploiement en Production (Serveur + Mobile PWA)
+## 💻 Installation & Compilation du Client Desktop (PC)
 
-En production, vous n'avez pas besoin de cloner l'intégralité du projet de développement ni d'initialiser tous les sous-modules Git (comme le client desktop C++). Il vous suffit de déployer le **serveur Go** et le **client mobile**.
+Pour utiliser le client de bureau Tux-It en local, vous devez cloner le dépôt de manière récursive afin de récupérer l'ensemble des modules :
 
-### 1. Structure requise sur le serveur
-Pour que le serveur Go serve automatiquement l'application mobile PWA à sa racine (`/`), le dossier de l'application mobile (`tux-mobile`) doit être placé directement à la racine du répertoire de travail de `tux-server` :
+```bash
+git clone --recursive https://github.com/DevEnDev-Team/tux-it.git
+```
+
+*(Si le dépôt a déjà été récupéré sans ses sous-modules, initialisez-les avec `git submodule update --init --recursive`)*.
+
+### Installation automatique via le script d'installation
+Le projet fournit un script d'installation (`install.sh`) qui compile l'application en mode Release et l'installe sur votre système Linux.
+
+1. **Installez les dépendances requises** pour Qt6 et CMake (sur Debian/Ubuntu/Mint) :
+   ```bash
+   sudo apt update
+   sudo apt install build-essential cmake qt6-base-dev qt6-base-private-dev
+   ```
+2. **Accédez au dossier du client** :
+   ```bash
+   cd tux-client
+   ```
+3. **Rendez le script exécutable et lancez-le** :
+   ```bash
+   chmod +x install.sh
+   ./install.sh
+   ```
+
+**Ce que fait ce script automatiquement** :
+* Compile l'application en mode **Release** avec CMake et Make.
+* Configure et crée les répertoires locaux utilisateurs requis (`~/.local/bin`, `~/.local/share/icons`, `~/.local/share/applications`).
+* Copie le binaire optimisé `tux-it` dans `~/.local/bin/`.
+* Génère et exporte l'icône de l'application dans `~/.local/share/icons/tux-it.png`.
+* Installe le raccourci d'application (`tux-it.desktop`) dans le menu de votre environnement de bureau.
+
+---
+
+## ☁️ Déploiement en Production du Serveur (Docker)
+
+Le serveur Go est entièrement packagé et distribué sous forme de conteneur Docker. En production, **il n'y a pas besoin de cloner l'intégralité du projet de développement**, seul le binaire du serveur (présent dans l'image Docker officielle) et le répertoire de l'application mobile (`tux-mobile`) sont nécessaires.
+
+### 1. Préparation de la structure sur le serveur
+Pour que le serveur serve automatiquement l'application mobile PWA à sa racine (`/`), le dossier de l'application mobile (`tux-mobile`) doit être monté à la racine du répertoire de travail de `tux-server` :
 
 ```text
 📂 répertoire-de-déploiement/
-├── 📄 tux-server (Binaire compilé du serveur)
-├── 📄 postit.db   (Base de données SQLite auto-générée)
+├── 📄 docker-compose.yml
 └── 📂 tux-mobile/  (Dossier contenant l'application PWA mobile)
     ├── 📄 index.html
     ├── 📄 app.js
     └── 📄 sw-v25.js
 ```
 
-### 2. Déploiement rapide via Docker Compose
-Voici une configuration de production typique à l'aide de Docker. Cette configuration monte le dossier de la PWA mobile et la base de données dans le conteneur du serveur.
+### 2. Lancement via Docker Compose
+Utilisez le fichier `docker-compose.yml` suivant pour démarrer le serveur de synchronisation en production. L'image Docker officielle de Tux-It (`ghcr.io/devendev-team/tux-server:latest`) contient l'environnement d'exécution Go complet.
 
 ```yaml
 version: '3.8'
@@ -61,27 +97,15 @@ services:
       - ADMIN_PASSWORD=votre_mot_de_passe_securise
       - PORT=8282
     volumes:
-      - ./data:/app/data
-      - ./tux-mobile:/app/tux-mobile # Liaison du client mobile PWA
+      - ./data:/app/data               # Persistance de la base de données (postit.db)
+      - ./tux-mobile:/app/tux-mobile   # Liaison de l'application mobile PWA
 ```
 
----
-
-## 💻 Clonage & Développement Local (Complet)
-
-Si vous souhaitez contribuer au projet ou compiler le client de bureau en local, vous devez cloner le dépôt de manière récursive afin de récupérer l'ensemble des modules :
-
+Démarrez ensuite le conteneur en arrière-plan :
 ```bash
-git clone --recursive https://github.com/DevEnDev-Team/tux-it.git
+docker compose up -d
 ```
-
-Si le dépôt a déjà été récupéré sans ses sous-modules, vous pouvez les initialiser à tout moment avec la commande suivante :
-```bash
-git submodule update --init --recursive
-```
-
-### Compilation du client de bureau (Qt6)
-Rendez-vous dans le répertoire `tux-client` et suivez les instructions de compilation présentes dans son [README.md](file:///home/mangoz404/Documents/Projets/Logiciels/tux-it/tux-client/README.md).
+*Le serveur de synchronisation sera opérationnel sur le port `8282` de votre machine.*
 
 ---
 
